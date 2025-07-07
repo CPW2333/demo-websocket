@@ -3,6 +3,10 @@ import { createServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import chalk from 'chalk';
+import { CONFIG } from './constants';
+
+// 解构出需要用到的常量
+const { PORT, BROADCAST_INTERVAL } = CONFIG;
 
 // 定义NodeJS类型
 declare global {
@@ -232,7 +236,7 @@ class WebSocketServerManager {
     console.log(chalk.green.bold('🎬 启动广播定时器'));
     this.broadcastInterval = setInterval(() => {
       this.broadcastMessage();
-    }, 1000); // 每秒广播一次
+    }, BROADCAST_INTERVAL); // 使用配置的广播间隔
   }
 
   /**
@@ -352,7 +356,6 @@ class WebSocketServerManager {
 
 // 创建Express应用
 const app = express();
-const PORT = process.env.PORT || 4444;
 
 // 中间件配置
 app.use(cors());

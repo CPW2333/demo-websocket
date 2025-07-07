@@ -18,18 +18,42 @@
 ```
 ws-demo/
 ├── src/
-│   └── index.ts          # 主要的服务器代码
+│   ├── index.ts          # 主要的服务器代码
+│   └── constants.ts      # 服务器常量配置
 ├── public/
 │   └── index.html        # 前端测试页面
 ├── package.json          # 项目依赖配置
 ├── tsconfig.json         # TypeScript 配置
+├── .npmrc               # pnpm 配置文件
 └── README.md            # 项目说明文档
+```
+
+## 环境准备
+
+### 1. 安装 Node.js
+
+确保已安装 Node.js (推荐 v18 或更高版本)
+
+### 2. 安装全局依赖
+
+```bash
+# 安装 pnpm 包管理器
+npm install -g pnpm
+
+# 安装 TypeScript 编译器（可选，项目已包含）
+pnpm add -g typescript
+
+# 安装 ts-node（可选，项目已包含）
+pnpm add -g ts-node
+
+# 安装 nodemon（可选，项目已包含）
+pnpm add -g nodemon
 ```
 
 ## 安装依赖
 
 ```bash
-npm install
+pnpm install
 ```
 
 ## 运行项目
@@ -37,39 +61,73 @@ npm install
 ### 开发模式（推荐）
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ### 生产模式
 
 ```bash
 # 编译 TypeScript
-npm run build
+pnpm run build
 
 # 运行编译后的代码
-npm start
+pnpm start
 ```
 
 ### 监听模式（自动重启）
 
 ```bash
-npm run dev
+pnpm run dev
+```
+
+### 自定义配置运行
+
+```bash
+# 使用自定义端口运行
+pnpm run dev:custom-port
+
+# 使用快速广播间隔（500ms）
+pnpm run dev:fast-broadcast
+
+# 监听所有网络接口
+pnpm run dev:network
+```
+
+### 环境变量配置
+
+项目支持通过环境变量自定义配置：
+
+```bash
+# 设置端口
+PORT=3000 pnpm run dev
+
+# 设置广播间隔（毫秒）
+BROADCAST_INTERVAL=500 pnpm run dev
+
+# 设置最大客户端数
+MAX_CLIENTS=50 pnpm run dev
+
+# 设置连接超时（毫秒）
+CONNECTION_TIMEOUT=60000 pnpm run dev
+
+# 启用调试模式
+DEBUG=true pnpm run dev
 ```
 
 ### 代码格式化
 
 ```bash
 # 格式化代码
-npm run format
+pnpm run format
 
 # 检查代码格式
-npm run format:check
+pnpm run format:check
 
 # 代码检查和自动修复
-npm run lint
+pnpm run lint
 
 # 检查代码质量
-npm run lint:check
+pnpm run lint:check
 ```
 
 ## 使用方法
@@ -162,8 +220,10 @@ npm run lint:check
 - **后端**：Node.js + Express + WebSocket (ws)
 - **前端**：原生 HTML/CSS/JavaScript
 - **语言**：TypeScript
+- **包管理器**：pnpm
 - **开发工具**：ts-node, nodemon
 - **代码质量**：ESLint, Prettier
+- **配置管理**：环境变量 + TypeScript 常量配置
 
 ## 开发说明
 
@@ -188,7 +248,7 @@ npm run lint:check
 ### 常见问题
 
 1. **端口被占用**：修改 `src/index.ts` 中的 `PORT` 变量
-2. **依赖安装失败**：删除 `node_modules` 后重新运行 `npm install`
+2. **依赖安装失败**：删除 `node_modules` 后重新运行 `pnpm install`
 3. **TypeScript 编译错误**：检查 `tsconfig.json` 配置
 
 ### 调试技巧
