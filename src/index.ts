@@ -37,7 +37,7 @@ class WebSocketServerManager {
   private broadcastInterval: ReturnType<typeof setInterval> | null = null;
   private messageCounter: number = 0;
 
-  // 给定的测试坐标点数组，用于广播消息时随机选择一个坐标点
+  // 给定的测试坐标点数组，用于广播消息时轮询选择一个坐标点发送给客户端
   private coordinates = [
     { lat: 40.046992, lng: 116.28626 },
     { lat: 40.046992, lng: 116.286496 },
