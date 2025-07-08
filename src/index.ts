@@ -19,7 +19,8 @@ declare global {
 interface Message {
   type: 'subscribe' | 'unsubscribe' | 'broadcast';
   data?: Record<string, unknown>;
-  timestamp: number;
+  timestamp?: number; // 改为可选
+  topic?: string; // 新增：支持订阅主题
 }
 
 // 定义客户端连接信息接口
@@ -29,6 +30,8 @@ interface ClientInfo {
   lastActivity: number;
   messageCounter: number;
   coordinateIndex: number;
+  subscribedTopic?: string; // 新增：记录订阅的主题
+  headingIndex?: number; // 新增：记录艏向索引
 }
 
 class WebSocketServerManager {
@@ -37,7 +40,7 @@ class WebSocketServerManager {
   private broadcastInterval: ReturnType<typeof setInterval> | null = null;
   private messageCounter: number = 0;
 
-  // 给定的测试坐标点数组，用于广播消息时轮询选择一个坐标点发送给客户端
+  // 经纬度测试坐标点数组
   private coordinates = [
     { lat: 40.046992, lng: 116.28626 },
     { lat: 40.046992, lng: 116.286496 },
@@ -45,6 +48,10 @@ class WebSocketServerManager {
     { lat: 40.047276, lng: 116.286094 },
   ];
   private coordinateIndex = 0;
+
+  // 新增：艏向测试数组
+  private headings = [90, 45, 230, 160];
+  private headingIndex = 0;
 
   constructor(server: ReturnType<typeof createServer>) {
     // 创建WebSocket服务器实例
@@ -116,7 +123,7 @@ class WebSocketServerManager {
 
     switch (message.type) {
       case 'subscribe':
-        this.handleSubscribe(clientId, client);
+        this.handleSubscribe(clientId, client, message.topic);
         break;
       case 'unsubscribe':
         this.handleUnsubscribe(clientId, client);
@@ -131,9 +138,10 @@ class WebSocketServerManager {
    * 处理订阅请求
    * @param clientId 客户端ID
    * @param client 客户端信息
+   * @param topic 订阅主题
    */
-  private handleSubscribe(clientId: string, client: ClientInfo): void {
-    if (client.isSubscribed) {
+  private handleSubscribe(clientId: string, client: ClientInfo, topic?: string): void {
+    if (client.isSubscribed && client.subscribedTopic === topic) {
       console.log(chalk.blue.bold(`ℹ️  客户端 ${chalk.yellow(clientId)} 已经订阅了`));
       this.sendMessage(client.ws, {
         type: 'broadcast',
@@ -143,11 +151,17 @@ class WebSocketServerManager {
       return;
     }
 
-    // 设置订阅状态
+    // 设置订阅状态和主题
     client.isSubscribed = true;
+    client.subscribedTopic = topic;
     client.messageCounter = 0; // 订阅时重置计数
     client.coordinateIndex = 0; // 订阅时重置坐标索引
-    console.log(chalk.green.bold(`✅ 客户端 ${chalk.yellow(clientId)} 订阅了广播服务`));
+    client.headingIndex = 0; // 新增：订阅时重置艏向索引
+    console.log(
+      chalk.green.bold(
+        `✅ 客户端 ${chalk.yellow(clientId)} 订阅了广播服务，主题: ${topic || '默认'}`
+      )
+    );
 
     // 如果这是第一个订阅的客户端，启动广播定时器
     if (this.getSubscribedClientsCount() === 1) {
@@ -175,6 +189,7 @@ class WebSocketServerManager {
     client.isSubscribed = false;
     client.messageCounter = 0; // 取消订阅时重置计数
     client.coordinateIndex = 0; // 取消订阅时重置坐标索引
+    client.headingIndex = 0; // 新增：取消订阅时重置艏向索引
     console.log(chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消订阅`));
 
     // 发送确认消息
@@ -211,6 +226,7 @@ class WebSocketServerManager {
       }
       client.messageCounter = 0; // 断开连接时重置计数
       client.coordinateIndex = 0; // 断开连接时重置坐标索引
+      client.headingIndex = 0; // 断开连接时重置艏向索引
     }
 
     // 从客户端列表中移除
@@ -262,30 +278,67 @@ class WebSocketServerManager {
       return;
     }
 
-    // 针对每个客户端独立计数和日志
     subscribedClients.forEach(([clientId, client], idx) => {
       client.messageCounter++;
-      // 每个客户端独立取坐标
-      const coordinate = this.coordinates[client.coordinateIndex];
-      client.coordinateIndex = (client.coordinateIndex + 1) % this.coordinates.length;
-      const broadcastMessage: Message = {
-        type: 'broadcast',
-        data: {
-          message: `这是第 ${client.messageCounter} 条广播消息`,
-          counter: client.messageCounter,
-          timestamp: new Date().toISOString(),
-          subscribedClientsCount: subscribedClients.length,
-          coordinate,
-        },
-        timestamp: Date.now(),
-      };
-      this.sendMessage(client.ws, broadcastMessage);
-      // 日志：每个客户端单独一条，格式为"给第xxx个客户端（clientId）发送..."
-      console.log(
-        chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送:`),
-        chalk.gray(`counter=${client.messageCounter}`),
-        chalk.magenta(`坐标: ${JSON.stringify(coordinate)}`)
-      );
+      let broadcastMessage: Message;
+      const now = new Date().toISOString();
+      const topic = client.subscribedTopic;
+      if (topic === 'navsatfix') {
+        // 经纬度类型
+        const coordinate = this.coordinates[client.coordinateIndex];
+        client.coordinateIndex = (client.coordinateIndex + 1) % this.coordinates.length;
+        broadcastMessage = {
+          type: 'broadcast',
+          data: {
+            message: `这是第 ${client.messageCounter} 条广播消息`,
+            timestamp: now,
+            topic,
+            data: coordinate,
+          },
+          timestamp: Date.now(),
+        };
+        this.sendMessage(client.ws, broadcastMessage);
+        console.log(
+          chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送经纬度:`),
+          chalk.magenta(`坐标: ${JSON.stringify(coordinate)}`)
+        );
+      } else if (topic === 'compass_hdg') {
+        // 艏向类型，轮询数组
+        const heading = this.headings[client.headingIndex ?? 0];
+        client.headingIndex = ((client.headingIndex ?? 0) + 1) % this.headings.length;
+        broadcastMessage = {
+          type: 'broadcast',
+          data: {
+            message: `这是第 ${client.messageCounter} 条广播消息`,
+            timestamp: now,
+            topic,
+            data: heading,
+          },
+          timestamp: Date.now(),
+        };
+        this.sendMessage(client.ws, broadcastMessage);
+        console.log(
+          chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送艏向:`),
+          chalk.magenta(`heading: ${heading}`)
+        );
+      } else {
+        // 其他类型
+        broadcastMessage = {
+          type: 'broadcast',
+          data: {
+            message: `这是第 ${client.messageCounter} 条广播消息`,
+            timestamp: now,
+            topic,
+            data: null,
+          },
+          timestamp: Date.now(),
+        };
+        this.sendMessage(client.ws, broadcastMessage);
+        console.log(
+          chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送:`),
+          chalk.gray(`counter=${client.messageCounter}`)
+        );
+      }
     });
   }
 

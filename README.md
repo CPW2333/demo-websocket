@@ -150,44 +150,48 @@ pnpm run lint:check
 
 ### 客户端发送的消息
 
-```typescript
+```json
 // 订阅广播
 {
   "type": "subscribe",
-  "timestamp": 1234567890
+  "topic": "navsatfix" // 或 "compass_hdg"，或自定义
 }
 
 // 取消订阅
 {
-  "type": "unsubscribe",
-  "timestamp": 1234567890
+  "type": "unsubscribe"
 }
 ```
 
 ### 服务器发送的消息
 
-```typescript
-// 广播消息
+```json
 {
   "type": "broadcast",
   "data": {
     "message": "这是第 1 条广播消息",
-    "counter": 1,
-    "timestamp": "2024-01-01T12:00:00.000Z",
-    "subscribedClientsCount": 2
-  },
-  "timestamp": 1234567890
+    "timestamp": "2025-07-08T08:11:40.354Z",
+    "topic": "navsatfix",
+    "data": { "lat": 40.046992, "lng": 116.28626 } // 经纬度类型
+  }
 }
 
-// 错误消息
 {
   "type": "broadcast",
   "data": {
-    "error": "错误信息"
-  },
-  "timestamp": 1234567890
+    "message": "这是第 1 条广播消息",
+    "timestamp": "2025-07-08T08:11:40.354Z",
+    "topic": "compass_hdg",
+    "data": 90 // 艏向类型
+  }
 }
 ```
+
+- `topic` 字段为客户端订阅时传递的字符串（如 `navsatfix`、`compass_hdg`）。
+- `data` 字段为当前类型的具体数据：
+  - `navsatfix` 类型为 `{ lat, lng }`，每次推送轮询坐标点数组。
+  - `compass_hdg` 类型为数字，每次推送轮询 [90, 45, 230, 160]。
+  - 其他类型为 null。
 
 ## 核心功能说明
 
@@ -214,6 +218,12 @@ pnpm run lint:check
 - 完整的错误处理机制
 - 消息格式验证
 - 连接状态检查
+
+## 业务逻辑说明
+
+- 订阅 `navsatfix` 时，服务器会轮询推送经纬度坐标点。
+- 订阅 `compass_hdg` 时，服务器会轮询推送艏向角（90、45、230、160）。
+- 每个客户端独立计数和索引，订阅/取消/断开时索引重置。
 
 ## 技术栈
 

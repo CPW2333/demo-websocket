@@ -343,6 +343,61 @@
           transform: rotate(360deg);
         }
       }
+
+      @media (max-width: 600px) {
+        .container {
+          padding: 8px !important;
+          margin: 2px !important;
+          min-width: 0;
+        }
+        .controls > div:first-child {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 6px !important;
+        }
+        #topicSelect,
+        #topicInput {
+          width: 100% !important;
+          max-width: 100% !important;
+          min-width: 0;
+          margin-right: 0 !important;
+          margin-bottom: 0 !important;
+        }
+        .controls > div:last-child {
+          flex-direction: column !important;
+          width: 100% !important;
+          gap: 6px !important;
+          margin-top: 6px !important;
+        }
+        .controls > div:last-child button {
+          width: 100% !important;
+          min-width: 0;
+          margin-right: 0 !important;
+        }
+        .stats {
+          flex-direction: column !important;
+          gap: 4px !important;
+          font-size: 0.98em !important;
+          margin: 10px 0 6px 0 !important;
+        }
+        .messages {
+          font-size: 0.98em !important;
+          word-break: break-all;
+          padding: 2px !important;
+          background: rgba(100, 255, 218, 0.06) !important;
+          border-radius: 7px !important;
+          box-sizing: border-box;
+          width: 100% !important;
+          overflow-wrap: break-word;
+        }
+        .message {
+          background: none !important;
+          border-radius: 0 !important;
+          margin: 4px 0 !important;
+          padding: 4px 2px !important;
+          box-shadow: none !important;
+        }
+      }
     </style>
   </head>
   <body>
@@ -355,43 +410,98 @@
         <span id="loadingIndicator" class="loading" style="display: none; margin-left: 10px"></span>
       </div>
 
-      <!-- 控制按钮 -->
-      <div class="controls">
-        <button id="connectBtn" class="btn-primary" onclick="connect()">🔌 连接</button>
-        <button id="disconnectBtn" class="btn-danger" onclick="disconnect()" disabled>
-          ❌ 断开连接
-        </button>
-        <button id="subscribeBtn" class="btn-success" onclick="subscribe()" disabled>
-          📡 订阅广播
-        </button>
-        <button id="unsubscribeBtn" class="btn-warning" onclick="unsubscribe()" disabled>
-          🚫 取消订阅
-        </button>
-        <button id="clearBtn" class="btn-primary" onclick="clearMessages()">🗑️ 清空消息</button>
+      <!-- 控制区域 -->
+      <div
+        class="controls"
+        style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px"
+      >
+        <div style="display: flex; align-items: center; gap: 10px">
+          <label for="topicSelect" style="font-size: 1.08em; color: #64ffda">选择订阅类型：</label>
+          <select
+            id="topicSelect"
+            style="
+              width: 220px;
+              max-width: 70%;
+              padding: 6px 10px;
+              border-radius: 6px;
+              border: 1px solid #333;
+              background: #222;
+              color: #64ffda;
+              font-size: 15px;
+            "
+          >
+            <option value="compass_hdg">艏向</option>
+            <option value="navsatfix" selected>经纬度</option>
+            <option value="custom">自定义...</option>
+          </select>
+          <input
+            id="topicInput"
+            type="text"
+            placeholder="自定义订阅主题"
+            style="
+              display: none;
+              width: 180px;
+              max-width: 40%;
+              padding: 6px 10px;
+              border-radius: 6px;
+              border: 1px solid #333;
+              background: #222;
+              color: #64ffda;
+              font-size: 15px;
+            "
+          />
+        </div>
+        <div style="margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap">
+          <button id="connectBtn" class="btn-primary" onclick="connect()">🔌 连接</button>
+          <button id="disconnectBtn" class="btn-danger" onclick="disconnect()" disabled>
+            ❌ 断开连接
+          </button>
+          <button id="subscribeBtn" class="btn-success" onclick="subscribe()" disabled>
+            📡 订阅广播
+          </button>
+          <button id="unsubscribeBtn" class="btn-warning" onclick="unsubscribe()" disabled>
+            🚫 取消订阅
+          </button>
+          <button id="clearBtn" class="btn-primary" onclick="clearMessages()">🗑️ 清空消息</button>
+        </div>
       </div>
+
+      <!-- 经纬度展示区 -->
+      <div
+        id="coordinateDisplay"
+        style="
+          margin: 18px 0 0 0;
+          padding: 14px 18px;
+          border-radius: 10px;
+          background: rgba(100, 255, 218, 0.08);
+          color: #64ffda;
+          font-size: 1.15em;
+          display: none;
+          box-shadow: 0 2px 12px rgba(100, 255, 218, 0.08);
+          font-weight: bold;
+        "
+      ></div>
 
       <!-- 消息显示区域 -->
       <div class="section-title">📨 接收到的消息</div>
       <div id="messages" class="messages"></div>
 
       <!-- 统计信息 -->
-      <div class="stats">
-        <div class="stat-card">
-          <div class="stat-value" id="messageCount">0</div>
-          <div class="stat-label">消息数量</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="connectionTime">0s</div>
-          <div class="stat-label">连接时间</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="lastMessageTime">-</div>
-          <div class="stat-label">最后消息时间</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value" id="connectionStatus">离线</div>
-          <div class="stat-label">连接状态</div>
-        </div>
+      <div
+        class="stats"
+        style="
+          display: flex;
+          gap: 18px;
+          align-items: center;
+          font-size: 0.98em;
+          color: #aaa;
+          margin: 18px 0 8px 0;
+        "
+      >
+        <span>消息数量: <span id="messageCount">0</span></span>
+        <span>连接时间: <span id="connectionTime">0s</span></span>
+        <span>最后消息时间: <span id="lastMessageTime">-</span></span>
+        <span>连接状态: <span id="connectionStatus">离线</span></span>
       </div>
     </div>
 
@@ -469,6 +579,11 @@
             connectionStartTime = null; // 重置连接开始时间
             connectionTimeEl.textContent = '0s'; // 重置连接时间显示
             addMessage(`连接已断开 (代码: ${event.code}, 原因: ${event.reason})`, 'info');
+            // 断开连接时恢复控件可用
+            topicSelect.disabled = false;
+            topicInput.disabled = false;
+            topicSelect.style.cursor = '';
+            topicInput.style.cursor = '';
           };
 
           // 连接错误的处理
@@ -480,6 +595,11 @@
             connectionStartTime = null; // 重置连接开始时间
             connectionTimeEl.textContent = '0s'; // 重置连接时间显示
             addMessage('WebSocket连接错误', 'error');
+            // 连接错误时恢复控件可用
+            topicSelect.disabled = false;
+            topicInput.disabled = false;
+            topicSelect.style.cursor = '';
+            topicInput.style.cursor = '';
           };
         } catch (error) {
           updateStatus('disconnected', '连接失败');
@@ -499,7 +619,25 @@
           ws.close();
           ws = null;
         }
+        // 断开连接时恢复控件可用
+        topicSelect.disabled = false;
+        topicInput.disabled = false;
+        topicSelect.style.cursor = '';
+        topicInput.style.cursor = '';
       }
+
+      // 监听topic下拉框切换自定义输入
+      const topicSelect = document.getElementById('topicSelect');
+      const topicInput = document.getElementById('topicInput');
+      topicSelect.addEventListener('change', function () {
+        if (this.value === 'custom') {
+          topicInput.style.display = '';
+          topicInput.style.marginLeft = '0px';
+          topicInput.focus();
+        } else {
+          topicInput.style.display = 'none';
+        }
+      });
 
       /**
        * 订阅广播服务
@@ -509,17 +647,29 @@
           addMessage('未连接到服务器', 'error');
           return;
         }
-
+        let topic = '';
+        if (topicSelect.value === 'custom') {
+          topic = topicInput.value.trim();
+          if (!topic) {
+            addMessage('请输入自定义订阅主题', 'error');
+            topicInput.focus();
+            return;
+          }
+        } else {
+          topic = topicSelect.value;
+        }
         const message = {
           type: 'subscribe',
-          timestamp: Date.now(),
+          topic,
         };
-
         ws.send(JSON.stringify(message));
-        addMessage('发送订阅请求', 'info');
-        // 立即切换按钮状态
+        addMessage('发送订阅请求: ' + topic, 'info');
         subscribeBtn.disabled = true;
         unsubscribeBtn.disabled = false;
+        topicSelect.disabled = true;
+        topicInput.disabled = true;
+        topicSelect.style.cursor = 'not-allowed';
+        topicInput.style.cursor = 'not-allowed';
       }
 
       /**
@@ -533,7 +683,6 @@
 
         const message = {
           type: 'unsubscribe',
-          timestamp: Date.now(),
         };
 
         ws.send(JSON.stringify(message));
@@ -541,6 +690,10 @@
         // 立即切换按钮状态
         subscribeBtn.disabled = false;
         unsubscribeBtn.disabled = true;
+        topicSelect.disabled = false;
+        topicInput.disabled = false;
+        topicSelect.style.cursor = '';
+        topicInput.style.cursor = '';
       }
 
       /**
@@ -551,28 +704,19 @@
         messageCount++;
         messageCountEl.textContent = messageCount;
         lastMessageTimeEl.textContent = new Date().toLocaleTimeString();
-
-        if (message.type === 'broadcast') {
-          const data = message.data;
-          let messageText = '';
-
-          if (data.error) {
-            messageText = `错误: ${data.error}`;
-            addMessage(messageText, 'error');
-          } else if (data.message) {
-            messageText = data.message;
-            addMessage(messageText, 'broadcast');
-            // 不再依赖消息内容切换按钮状态
-          }
-
-          // 如果有额外的数据，也显示出来
-          if (data.counter) {
-            addMessage(
-              `消息计数: ${data.counter}, 订阅客户端数: ${data.subscribedClientsCount || '未知'}`,
-              'info'
-            );
-          }
-        }
+        // 只显示接收时间和data内容
+        const time = new Date().toLocaleTimeString();
+        const dataStr = message.data ? JSON.stringify(message.data, null, 2) : '{}';
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message';
+        msgDiv.style.padding = '8px 12px';
+        msgDiv.style.background = 'rgba(100,255,218,0.06)';
+        msgDiv.style.borderRadius = '7px';
+        msgDiv.style.margin = '8px 0';
+        msgDiv.style.fontFamily = 'monospace';
+        msgDiv.innerHTML = `<div style='color:#64ffda;font-size:0.98em;'>${time}</div><pre style='margin:2px 0 0 0;color:#fff;font-size:1em;background:none;border:none;padding:0;'>${dataStr}</pre>`;
+        messagesEl.appendChild(msgDiv);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
       }
 
       /**
@@ -581,17 +725,7 @@
        * @param {string} type 消息类型 (broadcast, error, info)
        */
       function addMessage(text, type = 'info') {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${type}`;
-
-        const timestamp = new Date().toLocaleTimeString();
-        messageDiv.innerHTML = `
-                <div class="timestamp">[${timestamp}]</div>
-                <div class="message-content">${text}</div>
-            `;
-
-        messagesEl.appendChild(messageDiv);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        // 仅用于系统提示，不影响消息展示区
       }
 
       /**
@@ -638,6 +772,32 @@
       document.addEventListener('DOMContentLoaded', function () {
         addMessage('页面已加载，点击"连接"按钮开始测试', 'info');
       });
+
+      // 美化按钮样式
+      const style = document.createElement('style');
+      style.innerHTML = `
+        .btn-primary, .btn-success, .btn-danger, .btn-warning {
+          border: none;
+          border-radius: 7px;
+          padding: 8px 18px;
+          margin-right: 8px;
+          font-size: 1em;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+          box-shadow: 0 2px 8px rgba(100,255,218,0.08);
+        }
+        .btn-primary { background: #0f3460; color: #64ffda; }
+        .btn-primary:hover { background: #16213e; color: #fff; }
+        .btn-success { background: #1b4332; color: #64ffda; }
+        .btn-success:hover { background: #2d6a4f; color: #fff; }
+        .btn-danger { background: #4a1c1c; color: #ff4d4f; }
+        .btn-danger:hover { background: #7a2c2c; color: #fff; }
+        .btn-warning { background: #4a3c1c; color: #faad14; }
+        .btn-warning:hover { background: #7a6c2c; color: #fff; }
+        .messages { min-height: 120px; }
+      `;
+      document.head.appendChild(style);
     </script>
   </body>
 </html>
