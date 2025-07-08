@@ -193,6 +193,50 @@ pnpm run lint:check
   - `compass_hdg` 类型为数字，每次推送轮询 [90, 45, 230, 160]。
   - 其他类型为 null。
 
+## WebSocket 多主题订阅支持
+
+后端现已支持一次性订阅或取消多个主题。
+
+### 订阅多个主题
+
+```json
+{ "type": "subscribe", "topic": ["navsatfix", "compass_hdg"] }
+```
+
+### 取消多个主题
+
+```json
+{ "type": "unsubscribe", "topic": ["navsatfix", "compass_hdg"] }
+```
+
+### 取消所有订阅
+
+```json
+{ "type": "unsubscribe" }
+```
+
+### 注意事项
+
+- 每次只能发送一条合法的 JSON 消息。
+- 不要把多条 JSON 拼接在一起发送，否则会导致解析错误。
+
+#### 错误示例（不要这样做）：
+
+```js
+ws.send('{"type":"subscribe","topic":"navsatfix"}{"type":"subscribe","topic":"compass_hdg"}');
+```
+
+#### 正确示例：
+
+```js
+ws.send(
+  JSON.stringify({
+    type: 'subscribe',
+    topic: ['navsatfix', 'compass_hdg'],
+  })
+);
+```
+
 ## 核心功能说明
 
 ### 1. 连接管理

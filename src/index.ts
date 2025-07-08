@@ -30,8 +30,8 @@ interface ClientInfo {
   lastActivity: number;
   messageCounter: number;
   coordinateIndex: number;
-  subscribedTopic?: string; // 新增：记录订阅的主题
-  headingIndex?: number; // 新增：记录艏向索引
+  subscribedTopics?: string[]; // 改为数组，支持多主题
+  headingIndex?: number;
 }
 
 class WebSocketServerManager {
@@ -126,7 +126,7 @@ class WebSocketServerManager {
         this.handleSubscribe(clientId, client, message.topic);
         break;
       case 'unsubscribe':
-        this.handleUnsubscribe(clientId, client);
+        this.handleUnsubscribe(clientId, client, message.topic);
         break;
       default:
         console.log(chalk.yellow.bold(`⚠️  收到未知消息类型: ${chalk.gray(message.type)}`));
@@ -138,28 +138,27 @@ class WebSocketServerManager {
    * 处理订阅请求
    * @param clientId 客户端ID
    * @param client 客户端信息
-   * @param topic 订阅主题
+   * @param topic 订阅主题（支持字符串或字符串数组）
    */
-  private handleSubscribe(clientId: string, client: ClientInfo, topic?: string): void {
-    if (client.isSubscribed && client.subscribedTopic === topic) {
-      console.log(chalk.blue.bold(`ℹ️  客户端 ${chalk.yellow(clientId)} 已经订阅了`));
-      this.sendMessage(client.ws, {
-        type: 'broadcast',
-        data: { message: '您已经订阅了广播服务' },
-        timestamp: Date.now(),
-      });
+  private handleSubscribe(clientId: string, client: ClientInfo, topic?: string | string[]): void {
+    if (!topic) {
+      this.sendError(client.ws, '订阅主题不能为空');
       return;
     }
-
-    // 设置订阅状态和主题
-    client.isSubscribed = true;
-    client.subscribedTopic = topic;
-    client.messageCounter = 0; // 订阅时重置计数
-    client.coordinateIndex = 0; // 订阅时重置坐标索引
-    client.headingIndex = 0; // 新增：订阅时重置艏向索引
+    // 统一成数组
+    const topics = Array.isArray(topic) ? topic : [topic];
+    if (!client.isSubscribed) {
+      client.isSubscribed = true;
+      client.messageCounter = 0;
+      client.coordinateIndex = 0;
+      client.headingIndex = 0;
+      client.subscribedTopics = [];
+    }
+    // 合并订阅主题，去重
+    client.subscribedTopics = Array.from(new Set([...(client.subscribedTopics || []), ...topics]));
     console.log(
       chalk.green.bold(
-        `✅ 客户端 ${chalk.yellow(clientId)} 订阅了广播服务，主题: ${topic || '默认'}`
+        `✅ 客户端 ${chalk.yellow(clientId)} 订阅了广播服务，主题: ${client.subscribedTopics.join(', ')}`
       )
     );
 
@@ -173,9 +172,10 @@ class WebSocketServerManager {
    * 处理取消订阅请求
    * @param clientId 客户端ID
    * @param client 客户端信息
+   * @param topic 取消订阅的主题（支持字符串或字符串数组，若为空则全部取消）
    */
-  private handleUnsubscribe(clientId: string, client: ClientInfo): void {
-    if (!client.isSubscribed) {
+  private handleUnsubscribe(clientId: string, client: ClientInfo, topic?: string | string[]): void {
+    if (!client.isSubscribed || !client.subscribedTopics || client.subscribedTopics.length === 0) {
       console.log(chalk.blue.bold(`ℹ️  客户端 ${chalk.yellow(clientId)} 未订阅`));
       this.sendMessage(client.ws, {
         type: 'broadcast',
@@ -184,26 +184,53 @@ class WebSocketServerManager {
       });
       return;
     }
-
-    // 取消订阅状态
-    client.isSubscribed = false;
-    client.messageCounter = 0; // 取消订阅时重置计数
-    client.coordinateIndex = 0; // 取消订阅时重置坐标索引
-    client.headingIndex = 0; // 新增：取消订阅时重置艏向索引
-    console.log(chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消订阅`));
-
-    // 发送确认消息
-    this.sendMessage(client.ws, {
-      type: 'broadcast',
-      data: { message: '已取消订阅广播服务' },
-      timestamp: Date.now(),
-    });
-
-    // 如果没有订阅的客户端了，停止广播并重置计数器和坐标索引
-    if (this.getSubscribedClientsCount() === 0) {
-      this.stopBroadcast();
-      this.messageCounter = 0; // 全局计数器已废弃，但保留兼容
-      this.coordinateIndex = 0; // 重置坐标索引
+    if (!topic) {
+      // 取消所有订阅
+      client.isSubscribed = false;
+      client.subscribedTopics = [];
+      client.messageCounter = 0;
+      client.coordinateIndex = 0;
+      client.headingIndex = 0;
+      console.log(chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消所有订阅`));
+      this.sendMessage(client.ws, {
+        type: 'broadcast',
+        data: { message: '已取消所有订阅' },
+        timestamp: Date.now(),
+      });
+      if (this.getSubscribedClientsCount() === 0) {
+        this.stopBroadcast();
+        this.messageCounter = 0;
+        this.coordinateIndex = 0;
+      }
+      return;
+    }
+    const topics = Array.isArray(topic) ? topic : [topic];
+    client.subscribedTopics = client.subscribedTopics.filter(t => !topics.includes(t));
+    if (client.subscribedTopics.length === 0) {
+      client.isSubscribed = false;
+      client.messageCounter = 0;
+      client.coordinateIndex = 0;
+      client.headingIndex = 0;
+      console.log(chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消所有订阅`));
+      this.sendMessage(client.ws, {
+        type: 'broadcast',
+        data: { message: '已取消所有订阅' },
+        timestamp: Date.now(),
+      });
+      if (this.getSubscribedClientsCount() === 0) {
+        this.stopBroadcast();
+        this.messageCounter = 0;
+        this.coordinateIndex = 0;
+      }
+    } else {
+      console.log(
+        chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消订阅主题: ${topics.join(', ')}`)
+      );
+      this.sendMessage(client.ws, {
+        type: 'broadcast',
+        data: { message: `已取消订阅主题: ${topics.join(', ')}` },
+        timestamp: Date.now(),
+      });
     }
   }
 
@@ -267,11 +294,12 @@ class WebSocketServerManager {
   }
 
   /**
-   * 广播消息给所有订阅的客户端
+   * 广播消息给所有订阅的客户端（支持多主题）
    */
   private broadcastMessage(): void {
     const subscribedClients = Array.from(this.clients.entries()).filter(
-      ([_, client]) => client.isSubscribed
+      ([_, client]) =>
+        client.isSubscribed && client.subscribedTopics && client.subscribedTopics.length > 0
     );
 
     if (subscribedClients.length === 0) {
@@ -280,64 +308,66 @@ class WebSocketServerManager {
 
     subscribedClients.forEach(([clientId, client], idx) => {
       client.messageCounter++;
-      let broadcastMessage: Message;
       const now = new Date().toISOString();
-      const topic = client.subscribedTopic;
-      if (topic === 'navsatfix') {
-        // 经纬度类型
-        const coordinate = this.coordinates[client.coordinateIndex];
-        client.coordinateIndex = (client.coordinateIndex + 1) % this.coordinates.length;
-        broadcastMessage = {
-          type: 'broadcast',
-          data: {
-            message: `这是第 ${client.messageCounter} 条广播消息`,
-            timestamp: now,
-            topic,
-            data: coordinate,
-          },
-          timestamp: Date.now(),
-        };
-        this.sendMessage(client.ws, broadcastMessage);
-        console.log(
-          chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送经纬度:`),
-          chalk.magenta(`坐标: ${JSON.stringify(coordinate)}`)
-        );
-      } else if (topic === 'compass_hdg') {
-        // 艏向类型，轮询数组
-        const heading = this.headings[client.headingIndex ?? 0];
-        client.headingIndex = ((client.headingIndex ?? 0) + 1) % this.headings.length;
-        broadcastMessage = {
-          type: 'broadcast',
-          data: {
-            message: `这是第 ${client.messageCounter} 条广播消息`,
-            timestamp: now,
-            topic,
-            data: heading,
-          },
-          timestamp: Date.now(),
-        };
-        this.sendMessage(client.ws, broadcastMessage);
-        console.log(
-          chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送艏向:`),
-          chalk.magenta(`heading: ${heading}`)
-        );
-      } else {
-        // 其他类型
-        broadcastMessage = {
-          type: 'broadcast',
-          data: {
-            message: `这是第 ${client.messageCounter} 条广播消息`,
-            timestamp: now,
-            topic,
-            data: null,
-          },
-          timestamp: Date.now(),
-        };
-        this.sendMessage(client.ws, broadcastMessage);
-        console.log(
-          chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送:`),
-          chalk.gray(`counter=${client.messageCounter}`)
-        );
+      if (!client.subscribedTopics) return;
+      for (const topic of client.subscribedTopics) {
+        let broadcastMessage: Message;
+        if (topic === 'navsatfix') {
+          // 经纬度类型
+          const coordinate = this.coordinates[client.coordinateIndex];
+          client.coordinateIndex = (client.coordinateIndex + 1) % this.coordinates.length;
+          broadcastMessage = {
+            type: 'broadcast',
+            data: {
+              message: `这是第 ${client.messageCounter} 条广播消息`,
+              timestamp: now,
+              topic,
+              data: coordinate,
+            },
+            timestamp: Date.now(),
+          };
+          this.sendMessage(client.ws, broadcastMessage);
+          console.log(
+            chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送经纬度:`),
+            chalk.magenta(`坐标: ${JSON.stringify(coordinate)}`)
+          );
+        } else if (topic === 'compass_hdg') {
+          // 艏向类型，轮询数组
+          const heading = this.headings[client.headingIndex ?? 0];
+          client.headingIndex = ((client.headingIndex ?? 0) + 1) % this.headings.length;
+          broadcastMessage = {
+            type: 'broadcast',
+            data: {
+              message: `这是第 ${client.messageCounter} 条广播消息`,
+              timestamp: now,
+              topic,
+              data: heading,
+            },
+            timestamp: Date.now(),
+          };
+          this.sendMessage(client.ws, broadcastMessage);
+          console.log(
+            chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送艏向:`),
+            chalk.magenta(`heading: ${heading}`)
+          );
+        } else {
+          // 其他类型
+          broadcastMessage = {
+            type: 'broadcast',
+            data: {
+              message: `这是第 ${client.messageCounter} 条广播消息`,
+              timestamp: now,
+              topic,
+              data: null,
+            },
+            timestamp: Date.now(),
+          };
+          this.sendMessage(client.ws, broadcastMessage);
+          console.log(
+            chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送:`),
+            chalk.gray(`counter=${client.messageCounter}, topic=${topic}`)
+          );
+        }
       }
     });
   }
