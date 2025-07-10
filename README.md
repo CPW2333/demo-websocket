@@ -1,316 +1,196 @@
-# WebSocket 服务器演示项目
+# ws-demo 实时通信服务器
 
-这是一个基于 Express 和 WebSocket 的实时通信服务器演示项目，使用 TypeScript 开发。
+基于 Express + WebSocket + TypeScript 的高性能实时通信后端，支持多主题订阅、日志切分、现代开发与生产部署，配套美观前端测试页面。
 
-## 功能特性
+---
 
-- ✅ 基于 Express 的 HTTP 服务器
-- ✅ WebSocket 实时通信
-- ✅ 客户端订阅/取消订阅机制
-- ✅ 服务器主动广播消息（每秒一次）
-- ✅ 客户端断开连接时自动停止广播
-- ✅ TypeScript 类型安全
-- ✅ 详细的中文注释
-- ✅ 美观的前端测试界面
+## 1. 环境准备与运行方式
 
-## 项目结构
+### 必要环境
 
-```
-ws-demo/
-├── src/
-│   ├── index.ts          # 主要的服务器代码
-│   └── constants.ts      # 服务器常量配置
-├── public/
-│   └── index.html        # 前端测试页面
-├── package.json          # 项目依赖配置
-├── tsconfig.json         # TypeScript 配置
-├── .npmrc               # pnpm 配置文件
-└── README.md            # 项目说明文档
-```
-
-## 环境准备
-
-### 1. 安装 Node.js
-
-确保已安装 Node.js (推荐 v18 或更高版本)
-
-### 2. 安装全局依赖
+- Node.js 18 及以上（建议 LTS 版本）
+- pnpm 包管理器（推荐，需全局安装）
 
 ```bash
-# 安装 pnpm 包管理器
 npm install -g pnpm
-
-# 安装 TypeScript 编译器（可选，项目已包含）
-pnpm add -g typescript
-
-# 安装 ts-node（可选，项目已包含）
-pnpm add -g ts-node
-
-# 安装 nodemon（可选，项目已包含）
-pnpm add -g nodemon
 ```
 
-## 安装依赖
+### 安装依赖
 
 ```bash
 pnpm install
 ```
 
-## 运行项目
+### 启动方式
 
-### 开发模式（推荐）
+#### 开发模式
+
+- 日志彩色输出到控制台，便于调试
+- 热重载支持
 
 ```bash
+# Linux/macOS
 pnpm run dev
+# 或自定义端口/参数
+PORT=3000 BROADCAST_INTERVAL=500 pnpm run dev
+
+# Windows CMD
+pnpm run dev
+# 或自定义端口/参数
+set PORT=3000 && set BROADCAST_INTERVAL=500 && pnpm run dev
+
+# Windows PowerShell
+pnpm run dev
+# 或自定义端口/参数
+$env:PORT="3000"; $env:BROADCAST_INTERVAL="500"; pnpm run dev
 ```
 
-### 生产模式
+#### 生产模式
+
+- 日志写入 logs 目录，按天切分 info/error 日志
+- pm2 进程守护，自动重启
+- 推荐 cross-env 保证多平台兼容
 
 ```bash
-# 编译 TypeScript
+# Linux/macOS
 pnpm run build
+pnpm run start:prod
+# 或自定义参数
+NODE_ENV=production BROADCAST_INTERVAL=500 pnpm run start:prod
 
-# 运行编译后的代码
-pnpm start
+# Windows CMD
+pnpm run build
+pnpm run start:prod
+# 或自定义参数
+set NODE_ENV=production && set BROADCAST_INTERVAL=500 && pnpm run start:prod
+
+# Windows PowerShell
+pnpm run build
+pnpm run start:prod
+# 或自定义参数
+$env:NODE_ENV="production"; $env:BROADCAST_INTERVAL="500"; pnpm run start:prod
+
+# 推荐：使用 cross-env（跨平台兼容）
+pnpm add -D cross-env
+# 然后修改 package.json 脚本，在任何系统上都可用相同命令
 ```
 
-### 监听模式（自动重启）
+#### 开发/生产模式主要区别
 
-```bash
-pnpm run dev
+|          | 日志输出       | 进程管理 | 热重载 | 环境变量 | 日志目录 |
+| -------- | -------------- | -------- | ------ | -------- | -------- |
+| 开发模式 | 控制台（彩色） | 无       | 支持   | 支持     | 无       |
+| 生产模式 | logs/ 按天切分 | pm2      | 无     | 支持     | 有       |
+
+---
+
+## 2. 项目结构与说明
+
+```
+ws-demo/
+├── src/
+│   ├── index.ts          # 服务器主入口，Express + WebSocket 实现
+│   ├── constants.ts      # 服务器常量配置，支持环境变量覆盖
+│   └── logger.ts         # 日志工具，支持多环境、切分、彩色输出
+├── public/
+│   └── index.html        # 前端测试页面，支持多主题订阅
+├── logs/                 # 生产环境日志目录（自动生成，含 info/error 日志和 .audit.json 元数据）
+├── package.json          # 项目依赖与脚本配置
+├── tsconfig.json         # TypeScript 配置
+├── .npmrc                # pnpm 配置文件
+├── .eslintrc.js          # ESLint 代码规范配置
+├── .prettierrc           # Prettier 代码格式化配置
+├── ecosystem.config.js   # pm2 进程管理配置（如有，生产部署用）
+└── README.md             # 项目说明文档
 ```
 
-### 自定义配置运行
+- **src/**：后端核心代码，含主入口、常量、日志等
+- **public/**：前端测试页面，便于本地调试 WebSocket
+- **logs/**：生产环境下自动生成，按天切分 info/error 日志，含 .audit.json 元数据（请勿删除）
+- **ecosystem.config.js**：pm2 生产部署配置（如存在）
+- **package.json / tsconfig.json / .npmrc**：依赖、编译、包管理配置
+- **.eslintrc.js / .prettierrc**：代码规范与格式化
+- **README.md**：项目说明、用法、部署、FAQ 等
 
-```bash
-# 使用自定义端口运行
-pnpm run dev:custom-port
+---
 
-# 使用快速广播间隔（500ms）
-pnpm run dev:fast-broadcast
+## 3. 项目功能亮点
 
-# 监听所有网络接口
-pnpm run dev:network
-```
+- ✅ 多主题 WebSocket 实时通信，支持一次性订阅/取消多个主题
+- ✅ TypeScript 强类型，代码结构清晰
+- ✅ 生产环境日志自动切分归档，开发环境彩色输出
+- ✅ pm2 进程守护，自动重启与高可用
+- ✅ 环境变量灵活配置（端口、广播间隔、最大连接数等）
+- ✅ 详细中文注释，易于二次开发
+- ✅ 配套美观前端测试页面，支持多主题订阅、日志查看
 
-### 环境变量配置
+### 前端调用方式
 
-项目支持通过环境变量自定义配置：
+#### 1. 访问测试页面
 
-```bash
-# 设置端口
-PORT=3000 pnpm run dev
+浏览器打开 `http://localhost:4444`，使用内置页面测试 WebSocket 功能。
 
-# 设置广播间隔（毫秒）
-BROADCAST_INTERVAL=500 pnpm run dev
+#### 2. WebSocket 消息格式
 
-# 设置最大客户端数
-MAX_CLIENTS=50 pnpm run dev
-
-# 设置连接超时（毫秒）
-CONNECTION_TIMEOUT=60000 pnpm run dev
-
-# 启用调试模式
-DEBUG=true pnpm run dev
-```
-
-### 代码格式化
-
-```bash
-# 格式化代码
-pnpm run format
-
-# 检查代码格式
-pnpm run format:check
-
-# 代码检查和自动修复
-pnpm run lint
-
-# 检查代码质量
-pnpm run lint:check
-```
-
-## 使用方法
-
-1. **启动服务器**：运行上述任一命令启动服务器
-2. **访问测试页面**：在浏览器中打开 `http://localhost:4444`
-3. **连接 WebSocket**：点击"连接"按钮建立 WebSocket 连接
-4. **订阅广播**：点击"订阅广播"按钮开始接收服务器广播的消息
-5. **取消订阅**：点击"取消订阅"按钮停止接收广播消息
-6. **断开连接**：点击"断开连接"按钮关闭 WebSocket 连接
-
-## API 端点
-
-- `GET /` - 前端测试页面
-- `GET /api/status` - 服务器状态信息
-- `GET /health` - 健康检查端点
-- `WS /` - WebSocket 连接端点
-
-## WebSocket 消息格式
-
-### 客户端发送的消息
-
-```json
-// 订阅广播
-{
-  "type": "subscribe",
-  "topic": "navsatfix" // 或 "compass_hdg"，或自定义
-}
-
-// 取消订阅
-{
-  "type": "unsubscribe"
-}
-```
-
-### 服务器发送的消息
-
-```json
-{
-  "type": "broadcast",
-  "data": {
-    "message": "这是第 1 条广播消息",
-    "timestamp": "2025-07-08T08:11:40.354Z",
-    "topic": "navsatfix",
-    "data": { "lat": 40.046992, "lng": 116.28626 } // 经纬度类型
+- 订阅多个主题：
+  ```json
+  { "type": "subscribe", "topic": ["navsatfix", "compass_hdg"] }
+  ```
+- 取消多个主题：
+  ```json
+  { "type": "unsubscribe", "topic": ["navsatfix", "compass_hdg"] }
+  ```
+- 取消所有订阅：
+  ```json
+  { "type": "unsubscribe" }
+  ```
+- 服务器推送示例：
+  ```json
+  {
+    "type": "broadcast",
+    "data": {
+      "message": "这是第 1 条广播消息",
+      "timestamp": "2025-07-08T08:11:40.354Z",
+      "topic": "navsatfix",
+      "data": { "lat": 40.046992, "lng": 116.28626 }
+    }
   }
-}
+  ```
 
-{
-  "type": "broadcast",
-  "data": {
-    "message": "这是第 1 条广播消息",
-    "timestamp": "2025-07-08T08:11:40.354Z",
-    "topic": "compass_hdg",
-    "data": 90 // 艏向类型
-  }
-}
-```
+#### 3. 其他接口
 
-- `topic` 字段为客户端订阅时传递的字符串（如 `navsatfix`、`compass_hdg`）。
-- `data` 字段为当前类型的具体数据：
-  - `navsatfix` 类型为 `{ lat, lng }`，每次推送轮询坐标点数组。
-  - `compass_hdg` 类型为数字，每次推送轮询 [90, 45, 230, 160]。
-  - 其他类型为 null。
+- `GET /` 前端测试页面
+- `GET /api/status` 服务器状态
+- `GET /health` 健康检查
+- `WS /` WebSocket 连接端点
 
-## WebSocket 多主题订阅支持
+---
 
-后端现已支持一次性订阅或取消多个主题。
+## 4. 后端特性说明
 
-### 订阅多个主题
+- **多主题订阅机制**：支持客户端一次性订阅/取消多个主题，自动管理订阅关系
+- **高性能广播**：仅有订阅客户端时才广播，自动停止/恢复
+- **日志系统**：生产环境日志自动切分归档，开发环境彩色输出，支持 info/error 多级别
+- **pm2 进程守护**：生产环境推荐 pm2，自动重启、异常恢复
+- **环境变量配置**：PORT、BROADCAST_INTERVAL、MAX_CLIENTS、CONNECTION_TIMEOUT 等均可通过环境变量灵活配置
+- **TypeScript 类型安全**：全量类型定义，便于维护和扩展
+- **错误处理**：消息格式校验、连接状态检查、异常捕获
+- **自动清理**：断开连接自动清理资源，防止内存泄漏
+- **模块化设计**：易于扩展新主题、业务逻辑
 
-```json
-{ "type": "subscribe", "topic": ["navsatfix", "compass_hdg"] }
-```
+---
 
-### 取消多个主题
+## 5. 其他说明
 
-```json
-{ "type": "unsubscribe", "topic": ["navsatfix", "compass_hdg"] }
-```
+- **日志策略**：生产环境日志写入 logs 目录，按天切分，开发环境仅控制台输出
+- **环境变量建议**：多平台部署推荐 cross-env 设置环境变量
+- **常见问题**：
+  - 日志目录未生成？请用生产模式启动，确保 NODE_ENV=production
+  - pm2 命令未找到？请用 pnpm pm2 ... 或 npx pm2 ...
+- **贡献与反馈**：欢迎提 Issue 或 PR，完善功能与文档
 
-### 取消所有订阅
+---
 
-```json
-{ "type": "unsubscribe" }
-```
-
-### 注意事项
-
-- 每次只能发送一条合法的 JSON 消息。
-- 不要把多条 JSON 拼接在一起发送，否则会导致解析错误。
-
-#### 错误示例（不要这样做）：
-
-```js
-ws.send('{"type":"subscribe","topic":"navsatfix"}{"type":"subscribe","topic":"compass_hdg"}');
-```
-
-#### 正确示例：
-
-```js
-ws.send(
-  JSON.stringify({
-    type: 'subscribe',
-    topic: ['navsatfix', 'compass_hdg'],
-  })
-);
-```
-
-## 核心功能说明
-
-### 1. 连接管理
-
-- 每个客户端连接时分配唯一的客户端 ID
-- 自动处理连接、断开和错误事件
-- 维护客户端连接状态和活动时间
-
-### 2. 订阅机制
-
-- 客户端可以订阅/取消订阅广播服务
-- 只有订阅的客户端才会收到广播消息
-- 支持多个客户端同时订阅
-
-### 3. 广播系统
-
-- 当有客户端订阅时，服务器开始每秒广播一次消息
-- 当所有客户端都取消订阅或断开连接时，自动停止广播
-- 广播消息包含计数器、时间戳和订阅客户端数量
-
-### 4. 错误处理
-
-- 完整的错误处理机制
-- 消息格式验证
-- 连接状态检查
-
-## 业务逻辑说明
-
-- 订阅 `navsatfix` 时，服务器会轮询推送经纬度坐标点。
-- 订阅 `compass_hdg` 时，服务器会轮询推送艏向角（90、45、230、160）。
-- 每个客户端独立计数和索引，订阅/取消/断开时索引重置。
-
-## 技术栈
-
-- **后端**：Node.js + Express + WebSocket (ws)
-- **前端**：原生 HTML/CSS/JavaScript
-- **语言**：TypeScript
-- **包管理器**：pnpm
-- **开发工具**：ts-node, nodemon
-- **代码质量**：ESLint, Prettier
-- **配置管理**：环境变量 + TypeScript 常量配置
-
-## 开发说明
-
-### 代码结构
-
-1. **WebSocketServerManager 类**：管理所有 WebSocket 连接和广播逻辑
-2. **消息处理**：统一的消息格式和处理机制
-3. **状态管理**：实时跟踪客户端连接和订阅状态
-4. **定时器管理**：控制广播定时器的启动和停止
-
-### 关键特性
-
-- **类型安全**：完整的 TypeScript 类型定义
-- **内存管理**：自动清理断开的客户端连接
-- **性能优化**：只在有订阅客户端时进行广播
-- **可扩展性**：模块化设计，易于扩展新功能
-- **代码质量**：ESLint 代码检查和 Prettier 格式化
-- **自动格式化**：保存时自动格式化和修复代码问题
-
-## 故障排除
-
-### 常见问题
-
-1. **端口被占用**：修改 `src/index.ts` 中的 `PORT` 变量
-2. **依赖安装失败**：删除 `node_modules` 后重新运行 `pnpm install`
-3. **TypeScript 编译错误**：检查 `tsconfig.json` 配置
-
-### 调试技巧
-
-- 查看控制台输出的详细日志信息
-- 使用浏览器开发者工具检查 WebSocket 连接状态
-- 访问 `/api/status` 端点查看服务器状态
-
-## 许可证
+## License
 
 MIT License

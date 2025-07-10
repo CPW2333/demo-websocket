@@ -6,8 +6,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:prod": "cross-env NODE_ENV=production pnpm pm2 start dist/index.js --name ws-demo",
     "dev": "nodemon --exec ts-node src/index.ts",
-    "watch": "nodemon --exec ts-node src/index.ts",
     "dev:network": "HOST=0.0.0.0 ts-node src/index.ts",
     "dev:custom-port": "PORT=3000 ts-node src/index.ts",
     "dev:fast-broadcast": "BROADCAST_INTERVAL=500 ts-node src/index.ts",
@@ -25,24 +25,29 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "ws": "^8.14.2",
+    "chalk": "^4.1.2",
     "cors": "^2.8.5",
-    "chalk": "^4.1.2"
+    "express": "^4.18.2",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
-    "@types/ws": "^8.5.10",
     "@types/cors": "^2.8.13",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.10.0",
-    "typescript": "^5.3.2",
-    "ts-node": "^10.9.1",
-    "nodemon": "^3.0.1",
-    "prettier": "^3.1.0",
-    "eslint": "^8.54.0",
+    "@types/winston": "^2.4.4",
+    "@types/ws": "^8.5.10",
     "@typescript-eslint/eslint-plugin": "^6.12.0",
     "@typescript-eslint/parser": "^6.12.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.54.0",
     "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-prettier": "^5.0.1"
+    "eslint-plugin-prettier": "^5.0.1",
+    "nodemon": "^3.0.1",
+    "pm2": "^6.0.8",
+    "prettier": "^3.1.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.3.2"
   }
 }

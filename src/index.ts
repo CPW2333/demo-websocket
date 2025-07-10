@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import cors from 'cors';
 import chalk from 'chalk';
 import { CONFIG } from './constants';
+import logger from './logger';
 
 // 解构出需要用到的常量
 const { PORT, BROADCAST_INTERVAL } = CONFIG;
@@ -60,7 +61,7 @@ class WebSocketServerManager {
     // 设置WebSocket连接事件处理
     this.setupWebSocketHandlers();
 
-    console.log(chalk.green.bold('🚀 WebSocket服务器已启动'));
+    logger.info(`${chalk.green.bold('🚀 WebSocket服务器已启动')}`);
   }
 
   /**
@@ -70,7 +71,7 @@ class WebSocketServerManager {
     // 处理新的WebSocket连接
     this.wss.on('connection', (ws: WebSocket, _request) => {
       const clientId = this.generateClientId();
-      console.log(chalk.cyan.bold(`🔗 新的客户端连接: ${chalk.yellow(clientId)}`));
+      logger.info(`${chalk.cyan.bold('🔗 新的客户端连接:')} ${chalk.yellow(clientId)}`);
 
       // 初始化客户端信息
       this.clients.set(clientId, {
@@ -87,20 +88,20 @@ class WebSocketServerManager {
           const message: Message = JSON.parse(data.toString());
           this.handleClientMessage(clientId, message);
         } catch (error) {
-          console.error(chalk.red.bold('❌ 解析客户端消息失败:'), error);
+          logger.error(`${chalk.red.bold('❌ 解析客户端消息失败:')} ${error}`);
           this.sendError(ws, '消息格式错误');
         }
       });
 
       // 处理客户端断开连接
       ws.on('close', () => {
-        console.log(chalk.magenta.bold(`🔌 客户端断开连接: ${chalk.yellow(clientId)}`));
+        logger.info(`${chalk.magenta.bold('🔌 客户端断开连接:')} ${chalk.yellow(clientId)}`);
         this.handleClientDisconnect(clientId);
       });
 
       // 处理连接错误
       ws.on('error', error => {
-        console.error(chalk.red.bold(`💥 客户端连接错误 ${chalk.yellow(clientId)}:`), error);
+        logger.error(`${chalk.red.bold(`💥 客户端连接错误 ${chalk.yellow(clientId)}:`)} ${error}`);
         this.handleClientDisconnect(clientId);
       });
     });
@@ -114,7 +115,7 @@ class WebSocketServerManager {
   private handleClientMessage(clientId: string, message: Message): void {
     const client = this.clients.get(clientId);
     if (!client) {
-      console.error(chalk.red.bold(`❌ 未找到客户端: ${chalk.yellow(clientId)}`));
+      logger.error(`${chalk.red.bold('❌ 未找到客户端:')} ${chalk.yellow(clientId)}`);
       return;
     }
 
@@ -129,7 +130,7 @@ class WebSocketServerManager {
         this.handleUnsubscribe(clientId, client, message.topic);
         break;
       default:
-        console.log(chalk.yellow.bold(`⚠️  收到未知消息类型: ${chalk.gray(message.type)}`));
+        logger.info(`${chalk.yellow.bold('⚠️  收到未知消息类型:')} ${chalk.gray(message.type)}`);
         this.sendError(client.ws, '未知的消息类型');
     }
   }
@@ -156,10 +157,8 @@ class WebSocketServerManager {
     }
     // 合并订阅主题，去重
     client.subscribedTopics = Array.from(new Set([...(client.subscribedTopics || []), ...topics]));
-    console.log(
-      chalk.green.bold(
-        `✅ 客户端 ${chalk.yellow(clientId)} 订阅了广播服务，主题: ${client.subscribedTopics.join(', ')}`
-      )
+    logger.info(
+      `${chalk.green.bold('✅ 客户端')} ${chalk.yellow(clientId)} 订阅了广播服务，主题: ${client.subscribedTopics.join(', ')}`
     );
 
     // 如果这是第一个订阅的客户端，启动广播定时器
@@ -176,7 +175,7 @@ class WebSocketServerManager {
    */
   private handleUnsubscribe(clientId: string, client: ClientInfo, topic?: string | string[]): void {
     if (!client.isSubscribed || !client.subscribedTopics || client.subscribedTopics.length === 0) {
-      console.log(chalk.blue.bold(`ℹ️  客户端 ${chalk.yellow(clientId)} 未订阅`));
+      logger.info(`${chalk.blue.bold('ℹ️  客户端')} ${chalk.yellow(clientId)} 未订阅`);
       this.sendMessage(client.ws, {
         type: 'broadcast',
         data: { message: '您尚未订阅广播服务' },
@@ -191,7 +190,7 @@ class WebSocketServerManager {
       client.messageCounter = 0;
       client.coordinateIndex = 0;
       client.headingIndex = 0;
-      console.log(chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消所有订阅`));
+      logger.info(`${chalk.magenta.bold('🚫 客户端')} ${chalk.yellow(clientId)} 取消所有订阅`);
       this.sendMessage(client.ws, {
         type: 'broadcast',
         data: { message: '已取消所有订阅' },
@@ -211,7 +210,7 @@ class WebSocketServerManager {
       client.messageCounter = 0;
       client.coordinateIndex = 0;
       client.headingIndex = 0;
-      console.log(chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消所有订阅`));
+      logger.info(`${chalk.magenta.bold('🚫 客户端')} ${chalk.yellow(clientId)} 取消所有订阅`);
       this.sendMessage(client.ws, {
         type: 'broadcast',
         data: { message: '已取消所有订阅' },
@@ -223,8 +222,8 @@ class WebSocketServerManager {
         this.coordinateIndex = 0;
       }
     } else {
-      console.log(
-        chalk.magenta.bold(`🚫 客户端 ${chalk.yellow(clientId)} 取消订阅主题: ${topics.join(', ')}`)
+      logger.info(
+        `${chalk.magenta.bold('🚫 客户端')} ${chalk.yellow(clientId)} 取消订阅主题: ${topics.join(', ')}`
       );
       this.sendMessage(client.ws, {
         type: 'broadcast',
@@ -243,7 +242,7 @@ class WebSocketServerManager {
     if (client) {
       // 如果客户端已订阅，需要从订阅列表中移除
       if (client.isSubscribed) {
-        console.log(chalk.red.bold(`📡 订阅客户端 ${chalk.yellow(clientId)} 断开连接`));
+        logger.info(`${chalk.red.bold('📡 订阅客户端')} ${chalk.yellow(clientId)} 断开连接`);
         // 检查是否还有其他订阅的客户端
         if (this.getSubscribedClientsCount() === 1) {
           this.stopBroadcast();
@@ -258,7 +257,7 @@ class WebSocketServerManager {
 
     // 从客户端列表中移除
     this.clients.delete(clientId);
-    console.log(chalk.gray.bold(`🗑️  客户端 ${chalk.yellow(clientId)} 已从列表中移除`));
+    logger.info(`${chalk.gray.bold('🗑️  客户端')} ${chalk.yellow(clientId)} 已从列表中移除`);
 
     // 如果所有客户端都断开连接，也重置计数器和坐标索引
     if (this.clients.size === 0) {
@@ -272,11 +271,11 @@ class WebSocketServerManager {
    */
   private startBroadcast(): void {
     if (this.broadcastInterval) {
-      console.log(chalk.blue.bold('⏰ 广播定时器已经在运行'));
+      logger.info(`${chalk.blue.bold('⏰ 广播定时器已经在运行')}`);
       return;
     }
 
-    console.log(chalk.green.bold('🎬 启动广播定时器'));
+    logger.info(`${chalk.green.bold('🎬 启动广播定时器')}`);
     this.broadcastInterval = setInterval(() => {
       this.broadcastMessage();
     }, BROADCAST_INTERVAL); // 使用配置的广播间隔
@@ -287,7 +286,7 @@ class WebSocketServerManager {
    */
   private stopBroadcast(): void {
     if (this.broadcastInterval) {
-      console.log(chalk.red.bold('⏹️  停止广播定时器'));
+      logger.info(`${chalk.red.bold('⏹️  停止广播定时器')}`);
       clearInterval(this.broadcastInterval);
       this.broadcastInterval = null;
     }
@@ -327,9 +326,8 @@ class WebSocketServerManager {
             timestamp: Date.now(),
           };
           this.sendMessage(client.ws, broadcastMessage);
-          console.log(
-            chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送经纬度:`),
-            chalk.magenta(`坐标: ${JSON.stringify(coordinate)}`)
+          logger.info(
+            `${chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送经纬度:`)} 坐标: ${chalk.magenta(JSON.stringify(coordinate))}`
           );
         } else if (topic === 'compass_hdg') {
           // 艏向类型，轮询数组
@@ -346,9 +344,8 @@ class WebSocketServerManager {
             timestamp: Date.now(),
           };
           this.sendMessage(client.ws, broadcastMessage);
-          console.log(
-            chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送艏向:`),
-            chalk.magenta(`heading: ${heading}`)
+          logger.info(
+            `${chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送艏向:`)} heading: ${chalk.magenta(heading)}`
           );
         } else {
           // 其他类型
@@ -363,9 +360,8 @@ class WebSocketServerManager {
             timestamp: Date.now(),
           };
           this.sendMessage(client.ws, broadcastMessage);
-          console.log(
-            chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送:`),
-            chalk.gray(`counter=${client.messageCounter}, topic=${topic}`)
+          logger.info(
+            `${chalk.cyan.bold(`给第 ${idx + 1} 个客户端（${clientId}）发送:`)} counter=${chalk.gray(client.messageCounter)}, topic=${chalk.gray(topic)}`
           );
         }
       }
@@ -467,21 +463,28 @@ app.get('/health', (req, res) => {
 // 启动服务器
 server.listen(PORT, () => {
   const localIP = getLocalIP();
-  console.log(chalk.green.bold('🌐 服务器运行在'), chalk.cyan(`http://localhost:${PORT}`));
+  logger.info(`${chalk.green.bold('🌐 服务器运行在')} ${chalk.cyan(`http://localhost:${PORT}`)}`);
   if (localIP) {
-    console.log(chalk.green.bold('🌐 局域网访问:'), chalk.cyan(`http://${localIP}:${PORT}`));
+    logger.info(`${chalk.green.bold('🌐 局域网访问:')} ${chalk.cyan(`http://${localIP}:${PORT}`)}`);
   }
-  console.log(chalk.green.bold('🔌 WebSocket服务器运行在'), chalk.cyan(`ws://localhost:${PORT}`));
-  if (localIP) {
-    console.log(chalk.green.bold('🔌 WebSocket局域网:'), chalk.cyan(`ws://${localIP}:${PORT}`));
-  }
-  console.log(
-    chalk.green.bold('📊 API状态端点:'),
-    chalk.cyan(`http://localhost:${PORT}/api/status`)
+  logger.info(
+    `${chalk.green.bold('🔌 WebSocket服务器运行在')} ${chalk.cyan(`ws://localhost:${PORT}`)}`
   );
-  console.log(chalk.green.bold('🏥 健康检查端点:'), chalk.cyan(`http://localhost:${PORT}/health`));
-  console.log(chalk.yellow.bold('✨ 暗黑主题测试界面:'), chalk.cyan(`http://localhost:${PORT}`));
-  console.log(chalk.gray('='.repeat(60)));
+  if (localIP) {
+    logger.info(
+      `${chalk.green.bold('🔌 WebSocket局域网:')} ${chalk.cyan(`ws://${localIP}:${PORT}`)}`
+    );
+  }
+  logger.info(
+    `${chalk.green.bold('📊 API状态端点:')} ${chalk.cyan(`http://localhost:${PORT}/api/status`)}`
+  );
+  logger.info(
+    `${chalk.green.bold('🏥 健康检查端点:')} ${chalk.cyan(`http://localhost:${PORT}/health`)}`
+  );
+  logger.warn(
+    `${chalk.yellow.bold('✨ 暗黑主题测试界面:')} ${chalk.cyan(`http://localhost:${PORT}`)}`
+  );
+  logger.info(chalk.gray('='.repeat(60)));
 });
 
 // 获取本机局域网IP地址
@@ -502,17 +505,17 @@ function getLocalIP(): string | null {
 
 // 优雅关闭处理
 process.on('SIGINT', () => {
-  console.log(chalk.yellow.bold('🛑 正在关闭服务器...'));
+  logger.warn(`${chalk.yellow.bold('🛑 正在关闭服务器...')}`);
   server.close(() => {
-    console.log(chalk.green.bold('✅ 服务器已关闭'));
+    logger.info(`${chalk.green.bold('✅ 服务器已关闭')}`);
     process.exit(0);
   });
 });
 
 process.on('SIGTERM', () => {
-  console.log(chalk.yellow.bold('🛑 正在关闭服务器...'));
+  logger.warn(`${chalk.yellow.bold('🛑 正在关闭服务器...')}`);
   server.close(() => {
-    console.log(chalk.green.bold('✅ 服务器已关闭'));
+    logger.info(`${chalk.green.bold('✅ 服务器已关闭')}`);
     process.exit(0);
   });
 });
