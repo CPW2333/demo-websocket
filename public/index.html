@@ -541,7 +541,11 @@
 
         try {
           // 创建WebSocket连接
-          ws = new WebSocket(`ws://${window.location.host}`);
+          let wsUrl = `ws://${window.location.host}`;
+          if (window.location.protocol === 'https:') {
+            wsUrl = wsUrl.replace('ws://', 'wss://');
+          }
+          ws = new WebSocket(wsUrl);
 
           // 连接建立时的处理
           ws.onopen = function (event) {
