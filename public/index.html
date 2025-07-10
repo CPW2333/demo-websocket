@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>WebSocket 测试客户端 - 暗黑主题</title>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
     <style>
       * {
         margin: 0;
@@ -505,6 +506,39 @@
       </div>
     </div>
 
+    <!-- 版权栏 -->
+    <div
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #8c8c8c;
+        margin-top: 18px;
+        font-size: 12px;
+        letter-spacing: 1px;
+        gap: 8px;
+      "
+    >
+      <span style="text-align: center">© <span id="copyrightYear"></span></span>
+      <a
+        href="https://wjgreat.me"
+        target="_blank"
+        style="color: #64ffda; text-decoration: none; font-weight: bold"
+        >WJGREAT</a
+      >
+      <a
+        href="https://github.com/CPW2333/demo-websocket"
+        target="_blank"
+        style="display: flex; align-items: center"
+      >
+        <img
+          src="https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/github.svg"
+          alt="GitHub"
+          style="height: 18px; width: 18px; filter: invert(0.8) grayscale(1) brightness(1.5)"
+        />
+      </a>
+    </div>
+
     <script>
       // WebSocket 连接实例
       let ws = null;
@@ -775,6 +809,8 @@
       // 页面加载完成后的初始化
       document.addEventListener('DOMContentLoaded', function () {
         addMessage('页面已加载，点击"连接"按钮开始测试', 'info');
+        // 设置版权年份
+        document.getElementById('copyrightYear').textContent = new Date().getFullYear();
       });
 
       // 美化按钮样式
