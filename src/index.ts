@@ -43,10 +43,10 @@ class WebSocketServerManager {
 
   // 经纬度测试坐标点数组
   private coordinates = [
-    { lat: 40.046992, lng: 116.28626 },
-    { lat: 40.046992, lng: 116.286496 },
-    { lat: 40.047483, lng: 116.286615 },
-    { lat: 40.047276, lng: 116.286094 },
+    { lat: 40.048299, lng: 116.292295 },
+    { lat: 40.048299, lng: 116.292517 },
+    { lat: 40.048799, lng: 116.292586 },
+    { lat: 40.048589, lng: 116.292257 },
   ];
   private coordinateIndex = 0;
 
